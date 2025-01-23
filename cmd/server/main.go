@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 
@@ -31,14 +30,9 @@ func main() {
 
 	pubsub.DeclareAndBind(amqpConnection, routing.ExchangePerilTopic, "game_logs", "game_logs.*", int(amqp.Persistent))
 
-	playingState, err := json.Marshal(routing.PlayingState{
+	err = pubsub.PublishJSON(amqpChannel, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{
 		IsPaused: true,
 	})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = pubsub.PublishJSON(amqpChannel, routing.ExchangePerilDirect, routing.PauseKey, playingState)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -53,28 +47,24 @@ func main() {
 		switch input[0] {
 		case "pause":
 			log.Println("Sending pause message...")
-			playingState, err := json.Marshal(routing.PlayingState{
+
+			err = pubsub.PublishJSON(amqpChannel, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{
 				IsPaused: true,
 			})
 			if err != nil {
 				log.Fatal(err)
 			}
-			err = pubsub.PublishJSON(amqpChannel, routing.ExchangePerilDirect, routing.PauseKey, playingState)
-			if err != nil {
-				log.Fatal(err)
-			}
+
 		case "resume":
 			log.Println("Sending resume message...")
-			playingState, err := json.Marshal(routing.PlayingState{
+
+			err = pubsub.PublishJSON(amqpChannel, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{
 				IsPaused: false,
 			})
 			if err != nil {
 				log.Fatal(err)
 			}
-			err = pubsub.PublishJSON(amqpChannel, routing.ExchangePerilDirect, routing.PauseKey, playingState)
-			if err != nil {
-				log.Fatal(err)
-			}
+
 		case "quit":
 			log.Println("Ending connection...")
 			return

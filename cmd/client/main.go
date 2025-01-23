@@ -25,19 +25,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	gameState := gamelogic.NewGameState(username)
 
-	_, _, err = pubsub.DeclareAndBind(
-		amqpConnection,
-		routing.ExchangePerilDirect,
-		fmt.Sprintf("%s.%s", routing.PauseKey, username),
-		routing.PauseKey,
-		int(amqp.Transient),
-	)
+	err = pubsub.SubscribeJSON(amqpConnection, routing.ExchangePerilDirect, routing.PauseKey+"."+username, routing.PauseKey, int(amqp.Transient), handlerPause(gameState))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	gameState := gamelogic.NewGameState(username)
 	for {
 		input := gamelogic.GetInput()
 		if len(input) == 0 {
