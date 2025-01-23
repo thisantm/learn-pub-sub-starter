@@ -29,6 +29,8 @@ func main() {
 	}
 	defer amqpChannel.Close()
 
+	pubsub.DeclareAndBind(amqpConnection, routing.ExchangePerilTopic, "game_logs", "game_logs.*", int(amqp.Persistent))
+
 	playingState, err := json.Marshal(routing.PlayingState{
 		IsPaused: true,
 	})
