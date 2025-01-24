@@ -21,13 +21,37 @@ func main() {
 	defer amqpConnection.Close()
 	log.Println("Connection succeeded to RabbitMQ")
 
+	amqpChannel, err := amqpConnection.Channel()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	username, err := gamelogic.ClientWelcome()
 	if err != nil {
 		log.Fatal(err)
 	}
 	gameState := gamelogic.NewGameState(username)
 
-	err = pubsub.SubscribeJSON(amqpConnection, routing.ExchangePerilDirect, routing.PauseKey+"."+username, routing.PauseKey, int(amqp.Transient), handlerPause(gameState))
+	err = pubsub.SubscribeJSON(
+		amqpConnection,
+		routing.ExchangePerilDirect,
+		routing.PauseKey+"."+gameState.GetUsername(),
+		routing.PauseKey,
+		int(amqp.Transient),
+		handlerPause(gameState),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = pubsub.SubscribeJSON(
+		amqpConnection,
+		routing.ExchangePerilTopic,
+		routing.ArmyMovesPrefix+"."+gameState.GetUsername(),
+		routing.ArmyMovesPrefix+".*",
+		int(amqp.Transient),
+		handlerMove(gameState),
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -47,11 +71,17 @@ func main() {
 			}
 
 		case "move":
-			_, err := gameState.CommandMove(input)
+			armyMove, err := gameState.CommandMove(input)
 			if err != nil {
 				fmt.Println(err)
 				continue
 			}
+			err = pubsub.PublishJSON(amqpChannel, routing.ExchangePerilTopic, routing.ArmyMovesPrefix+"."+armyMove.Player.Username, armyMove)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			fmt.Printf("Moved %v units to %s\n", len(armyMove.Units), armyMove.ToLocation)
 
 		case "status":
 			gameState.CommandStatus()
