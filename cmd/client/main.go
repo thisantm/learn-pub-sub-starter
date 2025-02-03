@@ -7,6 +7,7 @@ import (
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
+
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -50,7 +51,19 @@ func main() {
 		routing.ArmyMovesPrefix+"."+gameState.GetUsername(),
 		routing.ArmyMovesPrefix+".*",
 		int(amqp.Transient),
-		handlerMove(gameState),
+		handlerMove(gameState, amqpChannel),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = pubsub.SubscribeJSON(
+		amqpConnection,
+		routing.ExchangePerilTopic,
+		routing.WarRecognitionsPrefix,
+		routing.WarRecognitionsPrefix+".*",
+		int(amqp.Persistent),
+		handlerWar(gameState),
 	)
 	if err != nil {
 		log.Fatal(err)
