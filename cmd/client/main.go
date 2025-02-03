@@ -63,7 +63,7 @@ func main() {
 		routing.WarRecognitionsPrefix,
 		routing.WarRecognitionsPrefix+".*",
 		int(amqp.Persistent),
-		handlerWar(gameState),
+		handlerWar(gameState, amqpChannel),
 	)
 	if err != nil {
 		log.Fatal(err)
