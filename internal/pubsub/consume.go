@@ -4,7 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
 	amqp "github.com/rabbitmq/amqp091-go"
+)
+
+type AckType int
+
+const (
+	Ack AckType = iota
+	NackRequeue
+	NackDiscard
 )
 
 func DeclareAndBind(
@@ -26,7 +35,9 @@ func DeclareAndBind(
 		simpleQueueType == transientInt,
 		simpleQueueType == transientInt,
 		false,
-		nil,
+		amqp.Table{
+			"x-dead-letter-exchange": routing.ExchangePerilDlx,
+		},
 	)
 	if err != nil {
 		return nil, amqp.Queue{}, err
@@ -46,7 +57,7 @@ func SubscribeJSON[T any](
 	queueName,
 	key string,
 	simpleQueueType int,
-	handler func(T),
+	handler func(T) AckType,
 ) error {
 	amqpCh, amqpQueue, err := DeclareAndBind(conn, exchange, queueName, key, simpleQueueType)
 	if err != nil {
@@ -75,8 +86,17 @@ func SubscribeJSON[T any](
 				fmt.Printf("could not unmarshal message: %v\n", err)
 				continue
 			}
-			handler(target)
-			msg.Ack(false)
+			switch handler(target) {
+			case Ack:
+				msg.Ack(false)
+				fmt.Println("Ack")
+			case NackDiscard:
+				msg.Nack(false, false)
+				fmt.Println("NackDiscard")
+			case NackRequeue:
+				msg.Nack(false, true)
+				fmt.Println("NackRequeue")
+			}
 		}
 	}()
 
