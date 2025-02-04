@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
+	"strconv"
+	"time"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
@@ -103,7 +105,28 @@ func main() {
 			gamelogic.PrintClientHelp()
 
 		case "spam":
-			fmt.Println("Spamming not allowed yet!")
+			if len(input) != 2 {
+				fmt.Println("needs a second val as int eg. spam 1000")
+				break
+			}
+			val, err := strconv.Atoi(input[1])
+			if err != nil {
+				fmt.Println("failed to parse second argument, second argument must be a integer eg. spam 1000")
+				break
+			}
+
+			for i := 0; i < val; i++ {
+				maliciousLog := routing.GameLog{
+					CurrentTime: time.Now(),
+					Message:     gamelogic.GetMaliciousLog(),
+					Username:    username,
+				}
+				err = pubsub.PublishGob(amqpChannel, routing.ExchangePerilTopic, routing.GameLogSlug+"."+username, maliciousLog)
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+			}
 
 		case "quit":
 			gamelogic.PrintQuit()

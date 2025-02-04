@@ -28,7 +28,10 @@ func main() {
 	}
 	defer amqpChannel.Close()
 
-	pubsub.DeclareAndBind(amqpConnection, routing.ExchangePerilTopic, "game_logs", "game_logs.*", int(amqp.Persistent))
+	err = pubsub.SubscribeGob(amqpConnection, routing.ExchangePerilTopic, "game_logs", "game_logs.*", int(amqp.Persistent), handlerGameLogs())
+	if err != nil {
+		log.Fatalf("could not starting consuming logs: %v", err)
+	}
 
 	err = pubsub.PublishJSON(amqpChannel, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{
 		IsPaused: true,
